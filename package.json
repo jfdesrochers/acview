@@ -1,0 +1,34 @@
+{
+  "name": "acview",
+  "version": "1.0.0",
+  "description": "ACView by J-F Desrochers",
+  "main": "index.html",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "npm run start:client",
+    "build": "webpack --progress --mode production",
+    "start:client": "webpack-dev-server --inline --hot --progress --mode development"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jfdesrochers/acview.git"
+  },
+  "author": "Jean-Francois Desrochers",
+  "license": "NCSA",
+  "bugs": {
+    "url": "https://github.com/jfdesrochers/acview/issues"
+  },
+  "homepage": "https://github.com/jfdesrochers/acview#readme",
+  "devDependencies": {
+    "babel-core": "^6.26.0",
+    "babel-loader": "^7.1.4",
+    "babel-preset-env": "^1.6.1",
+    "webpack": "^4.1.0",
+    "webpack-cli": "^2.0.10",
+    "webpack-dev-server": "^3.1.0"
+  },
+  "dependencies": {
+    "mithril": "^1.1.6",
+    "papaparse": "^4.3.7"
+  }
+}

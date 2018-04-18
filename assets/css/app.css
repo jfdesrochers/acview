@@ -37,12 +37,16 @@ body {
 }
 
 .appwindow {
-    visibility: hidden;
-    opacity: 0;
     color: #333;
     padding: 1.5rem 1rem;
     margin-bottom: 0;
     border-radius: 0.5rem;
+    width: 35rem;
+}
+
+#contents {
+    visibility: hidden;
+    opacity: 0;
     -webkit-transition: opacity 0.5s, visibility 0.5s;
     transition: opacity 0.5s, visibility 0.5s;
 }

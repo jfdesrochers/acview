@@ -25,24 +25,29 @@ if ((Test-Path $OutFile) -eq $true) {
 Add-Content -Value $Header -Path $OutFile
 
 if ($IncludeFiles -eq $true) {
-    $Folders = Get-ChildItem $RootPath -recurse -ErrorAction SilentlyContinue
-} else {
-    $Folders = Get-ChildItem $RootPath -recurse -Directory -ErrorAction SilentlyContinue
-}
-
-$Total = ($Folders | Measure-Object).count
-$Current = 0
-
-foreach ($Folder in $Folders) {
-    $Current++
-    Write-Progress -Activity "Getting Access Control List" -Status "Working on $Current / $Total" -PercentComplete (($Current / $Total) *100)
-    if ($ExcludeInherited -eq $true) {
-        $ACLs = get-acl $Folder.fullname -ErrorAction SilentlyContinue -ErrorVariable AccessDenied | ForEach-Object { $_.Access  } | Where-Object {$_.IsInherited -eq $false}
-    } else {
-        $ACLs = get-acl $Folder.fullname -ErrorAction SilentlyContinue -ErrorVariable AccessDenied | ForEach-Object { $_.Access  }
+    Get-ChildItem $RootPath -recurse -ErrorAction SilentlyContinue | Foreach-Object {
+        $Folder = $_
+        if ($ExcludeInherited -eq $true) {
+            $ACLs = get-acl $Folder.fullname -ErrorAction SilentlyContinue -ErrorVariable AccessDenied | ForEach-Object { $_.Access  } | Where-Object {$_.IsInherited -eq $false}
+        } else {
+            $ACLs = get-acl $Folder.fullname -ErrorAction SilentlyContinue -ErrorVariable AccessDenied | ForEach-Object { $_.Access  }
+        }
+	    Foreach ($ACL in $ACLs) {
+	        $OutInfo = '"' + $Folder.Fullname + '","' + $ACL.IdentityReference  + '","' + $ACL.AccessControlType + '","' + $ACL.IsInherited + '","' + $ACL.InheritanceFlags + '","' + $ACL.PropagationFlags + '"'
+            Add-Content -Value $OutInfo -Path $OutFile
+	    }
     }
-	Foreach ($ACL in $ACLs) {
-	    $OutInfo = '"' + $Folder.Fullname + '","' + $ACL.IdentityReference  + '","' + $ACL.AccessControlType + '","' + $ACL.IsInherited + '","' + $ACL.InheritanceFlags + '","' + $ACL.PropagationFlags + '"'
-        Add-Content -Value $OutInfo -Path $OutFile
-	}
+} else {
+    Get-ChildItem $RootPath -recurse -Directory -ErrorAction SilentlyContinue | Foreach-Object {
+        $Folder = $_
+        if ($ExcludeInherited -eq $true) {
+            $ACLs = get-acl $Folder.fullname -ErrorAction SilentlyContinue -ErrorVariable AccessDenied | ForEach-Object { $_.Access  } | Where-Object {$_.IsInherited -eq $false}
+        } else {
+            $ACLs = get-acl $Folder.fullname -ErrorAction SilentlyContinue -ErrorVariable AccessDenied | ForEach-Object { $_.Access  }
+        }
+	    Foreach ($ACL in $ACLs) {
+	        $OutInfo = '"' + $Folder.Fullname + '","' + $ACL.IdentityReference  + '","' + $ACL.AccessControlType + '","' + $ACL.IsInherited + '","' + $ACL.InheritanceFlags + '","' + $ACL.PropagationFlags + '"'
+            Add-Content -Value $OutInfo -Path $OutFile
+	    }
+    }
 }

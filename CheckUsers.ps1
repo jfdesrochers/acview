@@ -25,20 +25,21 @@ if ((Test-Path $OutFile) -eq $true) {
 Add-Content -Value $Header -Path $OutFile
 
 if ($OnlyActive -eq $true) {
-    $Users = Get-ADUser -Filter * | Where-Object {$_.Enabled -eq $true}
+    Get-ADUser -Filter * | Where-Object {$_.Enabled -eq $true} | ForEach-Object {
+        $User = $_
+        $Groups = $User | Get-ADPrincipalGroupMembership
+	    Foreach ($Group in $Groups) {
+	        $OutInfo = '"' + $User.SamAccountName + '","' + $User.Name  + '","' + $User.Enabled + '","' + $Group.Name + '"'
+            Add-Content -Value $OutInfo -Path $OutFile
+	    }
+    }
 } else {
-    $Users = Get-ADUser -Filter *
-}
-
-$Total = ($Users | Measure-Object).count
-$Current = 0
-
-foreach ($User in $Users) {
-    $Current++
-    Write-Progress -Activity "Getting AD Users and Groups" -Status "Working on $Current / $Total" -PercentComplete (($Current / $Total) *100)
-    $Groups = $User | Get-ADPrincipalGroupMembership
-	Foreach ($Group in $Groups) {
-	    $OutInfo = '"' + $User.SamAccountName + '","' + $User.Name  + '","' + $User.Enabled + '","' + $Group.Name + '"'
-        Add-Content -Value $OutInfo -Path $OutFile
-	}
+    Get-ADUser -Filter * | ForEach-Object {
+        $User = $_
+        $Groups = $User | Get-ADPrincipalGroupMembership
+	    Foreach ($Group in $Groups) {
+	        $OutInfo = '"' + $User.SamAccountName + '","' + $User.Name  + '","' + $User.Enabled + '","' + $Group.Name + '"'
+            Add-Content -Value $OutInfo -Path $OutFile
+	    }
+    }
 }

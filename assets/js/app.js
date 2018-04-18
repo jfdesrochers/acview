@@ -46,6 +46,7 @@ ACView.oninit = function () {
         console.log('Permissions parsing started...')
         setLoading(true, 'Loading permissions and users...')
         self.data.groups = {}
+        self.data.shares = {}
         let halfdone = false
         requestAnimationFrame(function () {
             Papa.parse(self.files.permcsv.file, {
@@ -59,10 +60,16 @@ ACView.oninit = function () {
                         const line = results.data[0]
                         if (!line['IdentityReference'] || line['IdentityReference'].indexOf('BUILTIN') > -1 || line['IdentityReference'].indexOf('\\') === -1) return
                         const group = line['IdentityReference'].split('\\')[1]
+                        const share = line['Folder Path']
                         if (group in self.data.groups) {
-                            self.data.groups[group].push(line['Folder Path'])
+                            self.data.groups[group].push(share)
                         } else {
-                            self.data.groups[group] = [line['Folder Path']]
+                            self.data.groups[group] = [share]
+                        }
+                        if (share in self.data.shares) {
+                            self.data.shares[share].push(group)
+                        } else {
+                            self.data.shares[share] = [group]
                         }
                     } catch (err) {
                         self.error = "Could not load the specified files. Please check that you have selected the correct ones and try again."
@@ -72,6 +79,7 @@ ACView.oninit = function () {
                 },
                 complete: function () {
                     console.log(self.data.groups)
+                    console.log(self.data.shares)
                     if (halfdone) {
                         setLoading(false)
                         m.redraw()
@@ -126,7 +134,7 @@ ACView.view = function () {
         m('.text-center', [
             m('h1.apptitle', 'ACView'),
             m('h4.appsubtitle', 'by Jean-François Desrochers'),
-            m('h3.titletext.mb-1', 'Access Control Viewer'),
+            m('h3.titletext.mb-2', 'Access Control Viewer'),
             m('p.mb-2', m.trust('ACView allows you to quickly view all the shares a specific Active Directory user has access to. You will need to run the following two scripts on your server: <a target="_blank" href="https://github.com/jfdesrochers/acview/blob/master/CheckPermissions.ps1">CheckPermissions.ps1</a> and <a target="_blank" href="https://github.com/jfdesrochers/acview/blob/master/CheckUsers.ps1">CheckUsers.ps1</a>. Then, use the forms below to load the results from those scripts.'))
         ]),
         self.error !== '' ? m('.alert.alert-danger', [

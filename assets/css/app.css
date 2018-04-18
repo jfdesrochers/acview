@@ -44,6 +44,11 @@ body {
     width: 35rem;
 }
 
+.appwindow.maximized {
+    width: calc(100vw - 2rem);
+    height: calc(100vh - 2rem);
+}
+
 #contents {
     visibility: hidden;
     opacity: 0;

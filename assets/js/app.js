@@ -31,6 +31,7 @@ ACView.oninit = function () {
         groups: {},
         shares: {}
     }
+    self.dataloaded = false
     self.onfilechange = function (e) {
         const files = e.target.files
         const field = e.target.id
@@ -48,6 +49,7 @@ ACView.oninit = function () {
         self.data.groups = {}
         self.data.shares = {}
         let halfdone = false
+        self.dataloaded = false
         requestAnimationFrame(function () {
             Papa.parse(self.files.permcsv.file, {
                 header: true,
@@ -82,6 +84,7 @@ ACView.oninit = function () {
                     console.log(self.data.shares)
                     if (halfdone) {
                         setLoading(false)
+                        self.dataloaded = true
                         m.redraw()
                     } else {
                         halfdone = true
@@ -117,6 +120,7 @@ ACView.oninit = function () {
                     console.log(self.data.users)
                     if (halfdone) {
                         setLoading(false)
+                        self.dataloaded = true
                         m.redraw()
                     } else {
                         halfdone = true
@@ -126,11 +130,108 @@ ACView.oninit = function () {
             })
         })
     }
+
+    self.sresults = []
+    self.scache = []
+    self.smode = 'users'
+    self.modeChange = function (newmode) {
+        return function () {
+            self.smode = newmode
+            self.scache = []
+            self.sresults = []
+        }
+    }
+    self.goSearch = function (e) {
+        let s = e.target.value.toLowerCase()
+        if (self.scache.length === 0) {
+            self.scache = Object.keys(self.data[self.smode])
+        }
+        self.sresults = []
+        if (s.length >= 2) {
+            for (let i = 0; i < self.scache.length; i++) {
+                if (self.smode === 'users') {
+                    if (self.scache[i].toLowerCase().indexOf(s) > -1 || self.data.users[self.scache[i]]['fullname'].toLowerCase().indexOf(s) > -1) {
+                        let o = Object.assign({}, self.data.users[self.scache[i]])
+                        o['username'] = self.scache[i]
+                        self.sresults.push(o)
+                    }
+                } else if (self.smode === 'groups') {
+                    if (self.scache[i].toLowerCase().indexOf(s) > -1) {
+                        let o = Object.assign({}, self.data.groups[self.scache[i]])
+                        o['groupname'] = self.scache[i]
+                        self.sresults.push(o)
+                    }
+                } else if (self.smode === 'shares') {
+                    if (self.scache[i].toLowerCase().indexOf(s) > -1) {
+                        let o = Object.assign({}, self.data.shares[self.scache[i]])
+                        o['sharename'] = self.scache[i]
+                        self.sresults.push(o)
+                    }
+                }
+            }
+        }
+    }
 }
 
 ACView.view = function () {
     const self = this
-    return m('.jumbotron.appwindow', [
+    return self.dataloaded ? m('.jumbotron.appwindow.maximized.d-flex.flex-column', [
+        m('.row.flex-shrink-0', [
+            m('.col-auto', [
+                m('h1.apptitle', 'ACView'),
+                m('h4.appsubtitle', 'by Jean-François Desrochers')
+            ]),
+            m('.col', [
+                m('.form-group.mb-1.mt-2', [
+                    m('strong.ml-1.mr-2', 'Search for :'),
+                    m('.custom-control.custom-radio.custom-control-inline', [
+                        m('input.custom-control-input#rduser', {type: 'radio', name: 'searchfor', onchange: self.modeChange('users'), checked: (self.smode === 'users')}),
+                        m('label.custom-control-label', {for: 'rduser'}, 'User')
+                    ]),
+                    m('.custom-control.custom-radio.custom-control-inline', [
+                        m('input.custom-control-input#rdgroup', {type: 'radio', name: 'searchfor', onchange: self.modeChange('groups'), checked: (self.smode === 'groups')}),
+                        m('label.custom-control-label', {for: 'rdgroup'}, 'Group')
+                    ]),
+                    m('.custom-control.custom-radio.custom-control-inline', [
+                        m('input.custom-control-input#rdshare', {type: 'radio', name: 'searchfor', onchange: self.modeChange('shares'), checked: (self.smode === 'shares')}),
+                        m('label.custom-control-label', {for: 'rdshare'}, 'Share')
+                    ])
+                ]),
+                m('.form-group', [
+                    m('input.form-control#search', {
+                        placeholder: 'Enter your search here...',
+                        oninput: self.goSearch,
+                        oncreate: (vnode) => {
+                            vnode.dom.focus()
+                        }
+                    })
+                ])
+            ])
+        ]),
+        m('.row.flex-grow-1', [
+            m('.col.d-flex', [
+                m('.card.flex-grow-1', [
+                    m('.card-header', 'Search results'),
+                    self.sresults.length > 0 ? m('.card-body.d-flex', [
+                        m('.list-group.flex-grow-1.overflow-auto', [
+                            self.sresults.map((o) => {
+                                if (self.smode === 'users') {
+                                    return m('a.list-group-item', {key: o.username}, `${o.fullname} [${o.username}]`)
+                                } else if (self.smode === 'groups') {
+                                    return m('a.list-group-item', {key: o.groupname}, `${o.groupname}`)
+                                } else if (self.smode === 'shares') {
+                                    return m('a.list-group-item', {key: o.sharename}, `${o.sharename}`)
+                                }
+                            })
+                        ])
+                    ]) : m('.card-body.d-flex.justify-content-center.align-items-center.flex-column', [
+                        m('h3', 'Search results will appear here.'),
+                        m('p', 'Use the search bar above to input your search and results will automatically appear in this window. Click on a result to view it.')
+                    ])
+                ])
+            ])
+        ])
+    ]) : m('.jumbotron.appwindow', [
         m('.text-center', [
             m('h1.apptitle', 'ACView'),
             m('h4.appsubtitle', 'by Jean-François Desrochers'),

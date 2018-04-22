@@ -53,6 +53,7 @@ ACView.oninit = function () {
         requestAnimationFrame(function () {
             Papa.parse(self.files.permcsv.file, {
                 header: true,
+                encoding: 'ISO-8859-2',
                 step: function (results, parser) {
                     try {
                         if (!results.meta.fields || results.meta.fields[0] !== 'Folder Path') {
@@ -80,8 +81,6 @@ ACView.oninit = function () {
                     }
                 },
                 complete: function () {
-                    console.log(self.data.groups)
-                    console.log(self.data.shares)
                     if (halfdone) {
                         setLoading(false)
                         self.dataloaded = true
@@ -96,6 +95,7 @@ ACView.oninit = function () {
             self.data.users = {}
             Papa.parse(self.files.usercsv.file, {
                 header: true,
+                encoding: 'ISO-8859-2',
                 step: function (results, parser) {
                     try {
                         if (!results.meta.fields || results.meta.fields[0] !== 'UserName') {
@@ -117,7 +117,6 @@ ACView.oninit = function () {
                     }
                 },
                 complete: function () {
-                    console.log(self.data.users)
                     if (halfdone) {
                         setLoading(false)
                         self.dataloaded = true
@@ -139,6 +138,9 @@ ACView.oninit = function () {
             self.smode = newmode
             self.scache = []
             self.sresults = []
+            self.openitem = ''
+            self.opendata = {}
+            self.pnlsize = ''
         }
     }
     self.goSearch = function (e) {
@@ -147,6 +149,9 @@ ACView.oninit = function () {
             self.scache = Object.keys(self.data[self.smode])
         }
         self.sresults = []
+        self.openitem = ''
+        self.opendata = {}
+        self.pnlsize = ''
         if (s.length >= 2) {
             for (let i = 0; i < self.scache.length; i++) {
                 if (self.smode === 'users') {
@@ -171,10 +176,81 @@ ACView.oninit = function () {
             }
         }
     }
+
+    self.openitem = ''
+    self.opendata = {}
+    self.open = function(item) {
+        return function (e) {
+            self.openitem = item
+            if (self.smode === 'users') {
+                self.opendata.heading = `${self.data.users[self.openitem].fullname} [${self.openitem}]`
+                self.opendata.datapoint1 = {title: 'Member Of', heading: 'Group Name', data: []}
+                self.opendata.datapoint2 = {title: 'Has Access To', heading: 'Share Name', data: []}
+                if (self.openitem in self.data.groups) {
+                    self.opendata.datapoint2.data.push(...self.data.groups[self.openitem])
+                }
+                for (let i = 0; i < self.data.users[self.openitem].groups.length; i++) {
+                    let curgrp = self.data.users[self.openitem].groups[i]
+                    if (curgrp in self.data.groups) {
+                        self.opendata.datapoint2.data.push(...self.data.groups[curgrp])
+                    }
+                    self.opendata.datapoint1.data.push(curgrp)
+                }
+            } else if (self.smode === 'groups') {
+                self.opendata.heading = self.openitem
+                self.opendata.datapoint1 = {title: 'Members', heading: 'User Name', data: []}
+                self.opendata.datapoint2 = {title: 'Has Access To', heading: 'Share Name', data: []}
+                if (self.openitem in self.data.groups) {
+                    self.opendata.datapoint2.data.push(...self.data.groups[self.openitem])
+                }
+                for (let user in self.data.users) {
+                    if (self.data.users[user].groups.indexOf(self.openitem) > -1) {
+                        self.opendata.datapoint1.data.push(`${self.data.users[user].fullname} [${user}]`)
+                    }
+                }
+            } else if (self.smode === 'shares') {
+                self.opendata.heading = self.openitem
+                self.opendata.datapoint1 = {title: 'Users Who Can Access', heading: 'User Name', data: []}
+                self.opendata.datapoint2 = {title: 'Groups Who Can Access', heading: 'Group Name', data: []}
+                if (self.openitem in self.data.shares) {
+                    self.opendata.datapoint2.data.push(...self.data.shares[self.openitem])
+                }
+                for (let i = 0; i < self.opendata.datapoint2.data.length; i++) {
+                    for (let user in self.data.users) {
+                        if (self.data.users[user].groups.indexOf(self.opendata.datapoint2.data[i]) > -1) {
+                            self.opendata.datapoint1.data.push(`${self.data.users[user].fullname} [${user}] (from ${self.opendata.datapoint2.data[i]})`)
+                        }
+                        if (self.opendata.datapoint2.data[i] === user) {
+                            self.opendata.datapoint1.data.push(`${self.data.users[user].fullname} [${user}] (directly applied)`)
+                        }
+                    }
+                }
+            }
+            self.opendata.datapoint1.data.sort()
+            self.opendata.datapoint2.data.sort()
+        }
+    }
+    self.close = function () {
+        self.openitem = ''
+        self.opendata = {}
+        self.pnlsize = ''
+    }
+    self.pnlsize = ''
+    self.expandreduce = function (which) {
+        return function () {
+            if (self.pnlsize === which) {
+                self.pnlsize = ''
+            } else {
+                self.pnlsize = which
+            }
+        }
+    }
 }
 
 ACView.view = function () {
     const self = this
+    const maxicon = "data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath d='M0 0v4l1.5-1.5 1.5 1.5 1-1-1.5-1.5 1.5-1.5h-4zm5 4l-1 1 1.5 1.5-1.5 1.5h4v-4l-1.5 1.5-1.5-1.5z' id='fullscreen-enter'%3e%3c/path%3e%3c/svg%3e"
+    const minicon = "data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath d='M1 0l-1 1 1.5 1.5-1.5 1.5h4v-4l-1.5 1.5-1.5-1.5zm3 4v4l1.5-1.5 1.5 1.5 1-1-1.5-1.5 1.5-1.5h-4z' id='fullscreen-exit'%3e%3c/path%3e%3c/svg%3e"
     return self.dataloaded ? m('.jumbotron.appwindow.maximized.d-flex.flex-column', [
         m('.row.flex-shrink-0', [
             m('.col-auto', [
@@ -209,27 +285,73 @@ ACView.view = function () {
             ])
         ]),
         m('.row.flex-grow-1', [
-            m('.col.d-flex', [
+            m((self.openitem ? '.col-3.d-flex.pr-0' : '.col.d-flex'), [
                 m('.card.flex-grow-1', [
                     m('.card-header', 'Search results'),
                     self.sresults.length > 0 ? m('.card-body.d-flex', [
-                        m('.list-group.flex-grow-1.overflow-auto', [
-                            self.sresults.map((o) => {
+                        m('.flex-grow-1.overflow-auto', m('table.table.table-sm', [
+                            m('thead', (self.smode === 'users') ? m('tr', [
+                                m('th', 'User Name'),
+                                m('th', 'Full Name'),
+                                m('th', 'Active')
+                            ]) : (self.smode === 'groups') ? m('tr', [
+                                m('th', 'Group Name')
+                            ]) : m('tr', [
+                                m('th', 'Share Name')
+                            ])),
+                            m('tbody', self.sresults.map((o) => {
                                 if (self.smode === 'users') {
-                                    return m('a.list-group-item', {key: o.username}, `${o.fullname} [${o.username}]`)
+                                    return m('tr' + (self.openitem === o.username ? '.bg-primary.text-white' : ''), {key: o.username, onclick: self.open(o.username)}, [m('td', o.username), m('td', o.fullname), m('td', o.active)])
                                 } else if (self.smode === 'groups') {
-                                    return m('a.list-group-item', {key: o.groupname}, `${o.groupname}`)
+                                    return m('tr' + (self.openitem === o.groupname ? '.bg-primary.text-white' : ''), {key: o.groupname, onclick: self.open(o.groupname)}, m('td', o.groupname))
                                 } else if (self.smode === 'shares') {
-                                    return m('a.list-group-item', {key: o.sharename}, `${o.sharename}`)
+                                    return m('tr' + (self.openitem === o.sharename ? '.bg-primary.text-white' : ''), {key: o.sharename, onclick: self.open(o.sharename)}, m('td', o.sharename))
                                 }
-                            })
-                        ])
+                            }))
+                        ]))
                     ]) : m('.card-body.d-flex.justify-content-center.align-items-center.flex-column', [
                         m('h3', 'Search results will appear here.'),
                         m('p', 'Use the search bar above to input your search and results will automatically appear in this window. Click on a result to view it.')
                     ])
                 ])
-            ])
+            ]), self.openitem ? m('.col.d-flex.flex-column', [
+                m('.lead.mb-1', [
+                    self.opendata.heading,
+                    m('button.close', {onclick: self.close}, m('span', m.trust('&times;')))
+                ]),
+                m(`.card.flex-split${self.pnlsize === 'dp1' ? '' : '.mb-2'}`, {style: self.pnlsize === 'dp2' ? 'display: none;' : ''}, [
+                    m('.card-header', [
+                        self.opendata.datapoint1.title,
+                        m('button.close', {onclick: self.expandreduce('dp1')}, m('img', {src: self.pnlsize === 'dp1' ? minicon : maxicon}))
+                    ]),
+                    m('.card-body.d-flex', [
+                        m('.flex-grow-1.overflow-auto', m('table.table.table-sm', [
+                            m('thead', m('tr', [
+                                m('th', self.opendata.datapoint1.heading)
+                            ])),
+                            m('tbody', self.opendata.datapoint1.data.map((o) => {
+                                return m('tr', m('td', o))
+                            }))
+                        ]))
+                    ])
+                ]),
+                m(`.card.flex-split${self.pnlsize === 'dp2' ? '' : '.mt-2'}`, {style: self.pnlsize === 'dp1' ? 'display: none;' : ''}, [
+                    m('.card-header', [
+                        self.opendata.datapoint2.title,
+                        m('button.close', {onclick: self.expandreduce('dp2')}, m('img', {src: self.pnlsize === 'dp2' ? minicon : maxicon}))
+                    ]),
+                    m('.card-body.d-flex', [
+                        m('.flex-grow-1.overflow-auto', m('table.table.table-sm', [
+                            m('thead', m('tr', [
+                                m('th', self.opendata.datapoint2.heading)
+                            ])),
+                            m('tbody', self.opendata.datapoint2.data.map((o) => {
+                                return m('tr', m('td', o))
+                            }))
+                        ]))
+                    ])
+                ])
+            ]) : ''
         ])
     ]) : m('.jumbotron.appwindow', [
         m('.text-center', [

@@ -7,6 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "npm run start:client",
     "build": "webpack --progress --mode production",
+    "compile": "inliner -m index.html > ACView.html",
     "start:client": "webpack-dev-server --inline --hot --progress --mode development"
   },
   "repository": {

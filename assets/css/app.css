@@ -67,6 +67,25 @@ body {
     overflow: auto;
 }
 
+.flex-split {
+    -webkit-box-flex: 1 !important;
+    -ms-flex: 1 !important;
+    flex: 1 !important;
+}
+
+.close, .close:hover, .close:focus {
+    color: #333;
+}
+
+.close:focus {
+    outline: none;
+}
+
+.close img {
+    height: 0.9375rem;
+    margin-top: -0.23125rem;
+}
+
 .spinner {
     margin: 1.875rem auto 0;
     width: 4.375rem;

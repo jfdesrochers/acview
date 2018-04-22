@@ -18,7 +18,7 @@ Param(
     [switch]$IncludeFiles
 )
 
-$Header = '"Folder Path","IdentityReference","AccessControlType","IsInherited","InheritanceFlags","PropagationFlags"'
+$Header = '"Folder Path","IdentityReference","FileSystemRights","AccessControlType","IsInherited","InheritanceFlags","PropagationFlags"'
 if ((Test-Path $OutFile) -eq $true) {
     Remove-Item $OutFile -Confirm
 }
@@ -33,7 +33,7 @@ if ($IncludeFiles -eq $true) {
             $ACLs = get-acl $Folder.fullname -ErrorAction SilentlyContinue -ErrorVariable AccessDenied | ForEach-Object { $_.Access  }
         }
 	    Foreach ($ACL in $ACLs) {
-	        $OutInfo = '"' + $Folder.Fullname + '","' + $ACL.IdentityReference  + '","' + $ACL.AccessControlType + '","' + $ACL.IsInherited + '","' + $ACL.InheritanceFlags + '","' + $ACL.PropagationFlags + '"'
+	        $OutInfo = '"' + $Folder.Fullname + '","' + $ACL.IdentityReference  + '","' + $ACL.FileSystemRights + '","' + $ACL.AccessControlType + '","' + $ACL.IsInherited + '","' + $ACL.InheritanceFlags + '","' + $ACL.PropagationFlags + '"'
             Add-Content -Value $OutInfo -Path $OutFile
 	    }
     }
@@ -46,7 +46,7 @@ if ($IncludeFiles -eq $true) {
             $ACLs = get-acl $Folder.fullname -ErrorAction SilentlyContinue -ErrorVariable AccessDenied | ForEach-Object { $_.Access  }
         }
 	    Foreach ($ACL in $ACLs) {
-	        $OutInfo = '"' + $Folder.Fullname + '","' + $ACL.IdentityReference  + '","' + $ACL.AccessControlType + '","' + $ACL.IsInherited + '","' + $ACL.InheritanceFlags + '","' + $ACL.PropagationFlags + '"'
+	        $OutInfo = '"' + $Folder.Fullname + '","' + $ACL.IdentityReference  + '","' + $ACL.FileSystemRights + '","' + $ACL.AccessControlType + '","' + $ACL.IsInherited + '","' + $ACL.InheritanceFlags + '","' + $ACL.PropagationFlags + '"'
             Add-Content -Value $OutInfo -Path $OutFile
 	    }
     }

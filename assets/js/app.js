@@ -17,6 +17,73 @@ function setLoading (isLoading, ldMessage) {
     }
 }
 
+const PERMISSIONS_LOOKUP = {
+    extended: {
+        WriteData: 'Wd',
+        CreateFiles: 'Cf',
+        CreateDirectories: 'Cd',
+        AppendData: 'Ad',
+        WriteExtendedAttributes: 'We',
+        WriteAttributes: 'Wa',
+        ReadData: 'Rd',
+        ListDirectory: 'Ld',
+        ReadExtendedAttributes: 'Re',
+        ReadAttributes: 'Ra',
+        ReadPermissions: 'Rp',
+        ExecuteFile: 'Xe',
+        Traverse: 'Tr',
+        Delete: 'De',
+        DeleteSubdirectoriesAndFiles: 'Dr',
+        ChangePermissions: 'Cp',
+        TakeOwnership: 'To'
+    },
+    main: {
+        Write: 'W',
+        Read: 'R',
+        ReadAndExecute: 'RX',
+        Modify: 'M',
+        FullControl: 'Full'
+    }
+}
+
+function convertPermissions (permStr) {
+    let perm = {main: '', ext: ''}
+    permStr = permStr.split(', ')
+    for (let i = 0; i < permStr.length; i++) {
+        if (permStr[i] in PERMISSIONS_LOOKUP.main) {
+            perm.main += PERMISSIONS_LOOKUP.main[permStr[i]]
+        } else if (permStr[i] in PERMISSIONS_LOOKUP.extended) {
+            perm.ext += PERMISSIONS_LOOKUP.extended[permStr[i]]
+        }
+    }
+    return perm
+}
+
+const PERMISSIONS = {
+    Wd: {name: 'WriteData', desc: ''},
+    Cf: {name: 'CreateFiles', desc: ''},
+    Cd: {name: 'CreateDirectories', desc: ''},
+    Ad: {name: 'AppendData', desc: ''},
+    We: {name: 'WriteExtendedAttributes', desc: ''},
+    Wa: {name: 'WriteAttributes', desc: ''},
+    Rd: {name: 'ReadData', desc: ''},
+    Ld: {name: 'ListDirectory', desc: ''},
+    Re: {name: 'ReadExtendedAttributes', desc: ''},
+    Ra: {name: 'ReadAttributes', desc: ''},
+    Rp: {name: 'ReadPermissions', desc: ''},
+    Xe: {name: 'ExecuteFile', desc: ''},
+    Tr: {name: 'Traverse', desc: ''},
+    De: {name: 'Delete', desc: ''},
+    Dr: {name: 'DeleteSubdirectoriesAndFiles', desc: ''},
+    Cp: {name: 'ChangePermissions', desc: ''},
+    To: {name: 'TakeOwnership', desc: ''},
+    W: {name: 'Write', desc: ''},
+    R: {name: 'Read', desc: ''},
+    RX: {name: 'ReadAndExecute', desc: ''},
+    M: {name: 'Modify', desc: ''},
+    Full: {name: 'FullControl', desc: ''}
+}
+
 const ACView = {}
 
 ACView.oninit = function () {
@@ -64,15 +131,16 @@ ACView.oninit = function () {
                         if (!line['IdentityReference'] || line['IdentityReference'].indexOf('BUILTIN') > -1 || line['IdentityReference'].indexOf('\\') === -1) return
                         const group = line['IdentityReference'].split('\\')[1]
                         const share = line['Folder Path']
+                        const perm = convertPermissions(line['FileSystemRights'])
                         if (group in self.data.groups) {
-                            self.data.groups[group].push(share)
+                            self.data.groups[group].push({share: share, perm: perm})
                         } else {
-                            self.data.groups[group] = [share]
+                            self.data.groups[group] = [{share: share, perm: perm}]
                         }
                         if (share in self.data.shares) {
-                            self.data.shares[share].push(group)
+                            self.data.shares[share].push({group: group, perm: perm})
                         } else {
-                            self.data.shares[share] = [group]
+                            self.data.shares[share] = [{group: group, perm: perm}]
                         }
                     } catch (err) {
                         self.error = "Could not load the specified files. Please check that you have selected the correct ones and try again."
@@ -184,50 +252,58 @@ ACView.oninit = function () {
             self.openitem = item
             if (self.smode === 'users') {
                 self.opendata.heading = `${self.data.users[self.openitem].fullname} [${self.openitem}]`
-                self.opendata.datapoint1 = {title: 'Member Of', heading: 'Group Name', data: []}
-                self.opendata.datapoint2 = {title: 'Has Access To', heading: 'Share Name', data: []}
+                self.opendata.datapoint1 = {title: 'Member Of', heading: ['Group Name'], data: []}
+                self.opendata.datapoint2 = {title: 'Has Access To', heading: ['Share Name', 'Permissions'], data: []}
                 if (self.openitem in self.data.groups) {
-                    self.opendata.datapoint2.data.push(...self.data.groups[self.openitem])
+                    for (let i = 0; i < self.data.groups[self.openitem].length; i++) {
+                        self.opendata.datapoint2.data.push([self.data.groups[self.openitem][i].share, self.data.groups[self.openitem][i].perm.main || self.data.groups[self.openitem][i].perm.ext])
+                    }
                 }
                 for (let i = 0; i < self.data.users[self.openitem].groups.length; i++) {
                     let curgrp = self.data.users[self.openitem].groups[i]
                     if (curgrp in self.data.groups) {
-                        self.opendata.datapoint2.data.push(...self.data.groups[curgrp])
+                        for (let j = 0; j < self.data.groups[curgrp].length; j++) {
+                            self.opendata.datapoint2.data.push([self.data.groups[curgrp][j].share, self.data.groups[curgrp][j].perm.main || self.data.groups[curgrp][j].perm.ext])
+                        }
                     }
-                    self.opendata.datapoint1.data.push(curgrp)
+                    self.opendata.datapoint1.data.push([curgrp])
                 }
             } else if (self.smode === 'groups') {
                 self.opendata.heading = self.openitem
-                self.opendata.datapoint1 = {title: 'Members', heading: 'User Name', data: []}
-                self.opendata.datapoint2 = {title: 'Has Access To', heading: 'Share Name', data: []}
+                self.opendata.datapoint1 = {title: 'Members', heading: ['User Name'], data: []}
+                self.opendata.datapoint2 = {title: 'Has Access To', heading: ['Share Name', 'Permissions'], data: []}
                 if (self.openitem in self.data.groups) {
-                    self.opendata.datapoint2.data.push(...self.data.groups[self.openitem])
+                    for (let i = 0; i < self.data.groups[self.openitem].length; i++) {
+                        self.opendata.datapoint2.data.push([self.data.groups[self.openitem][i].share, self.data.groups[self.openitem][i].perm.main || self.data.groups[self.openitem][i].perm.ext])
+                    }
                 }
                 for (let user in self.data.users) {
                     if (self.data.users[user].groups.indexOf(self.openitem) > -1) {
-                        self.opendata.datapoint1.data.push(`${self.data.users[user].fullname} [${user}]`)
+                        self.opendata.datapoint1.data.push([`${self.data.users[user].fullname} [${user}]`])
                     }
                 }
             } else if (self.smode === 'shares') {
                 self.opendata.heading = self.openitem
-                self.opendata.datapoint1 = {title: 'Users Who Can Access', heading: 'User Name', data: []}
-                self.opendata.datapoint2 = {title: 'Groups Who Can Access', heading: 'Group Name', data: []}
+                self.opendata.datapoint1 = {title: 'Users Who Can Access', heading: ['User Name', 'From Group', 'Permissions'], data: []}
+                self.opendata.datapoint2 = {title: 'Groups Who Can Access', heading: ['Group Name', 'Permissions'], data: []}
                 if (self.openitem in self.data.shares) {
-                    self.opendata.datapoint2.data.push(...self.data.shares[self.openitem])
+                    for (let i = 0; i < self.data.shares[self.openitem].length; i++) {
+                        self.opendata.datapoint2.data.push([self.data.shares[self.openitem][i].group, self.data.shares[self.openitem][i].perm.main || self.data.shares[self.openitem][i].perm.ext])
+                    }
                 }
                 for (let i = 0; i < self.opendata.datapoint2.data.length; i++) {
                     for (let user in self.data.users) {
-                        if (self.data.users[user].groups.indexOf(self.opendata.datapoint2.data[i]) > -1) {
-                            self.opendata.datapoint1.data.push(`${self.data.users[user].fullname} [${user}] (from ${self.opendata.datapoint2.data[i]})`)
+                        if (self.data.users[user].groups.indexOf(self.opendata.datapoint2.data[i][0]) > -1) {
+                            self.opendata.datapoint1.data.push([`${self.data.users[user].fullname} [${user}]`, self.opendata.datapoint2.data[i][0], self.opendata.datapoint2.data[i][1]])
                         }
-                        if (self.opendata.datapoint2.data[i] === user) {
-                            self.opendata.datapoint1.data.push(`${self.data.users[user].fullname} [${user}] (directly applied)`)
+                        if (self.opendata.datapoint2.data[i][0] === user) {
+                            self.opendata.datapoint1.data.push([`${self.data.users[user].fullname} [${user}]`, '(directly applied)', self.opendata.datapoint2.data[i][1]])
                         }
                     }
                 }
             }
-            self.opendata.datapoint1.data.sort()
-            self.opendata.datapoint2.data.sort()
+            //self.opendata.datapoint1.data.sort()
+            //self.opendata.datapoint2.data.sort()
         }
     }
     self.close = function () {
@@ -326,11 +402,13 @@ ACView.view = function () {
                     ]),
                     m('.card-body.d-flex', [
                         m('.flex-grow-1.overflow-auto', m('table.table.table-sm', [
-                            m('thead', m('tr', [
-                                m('th', self.opendata.datapoint1.heading)
-                            ])),
+                            m('thead', m('tr', self.opendata.datapoint1.heading.map((h) => {
+                                return m('th', h)
+                            }))),
                             m('tbody', self.opendata.datapoint1.data.map((o) => {
-                                return m('tr', m('td', o))
+                                return m('tr', o.map((i) => {
+                                    return m('td', i)
+                                }))
                             }))
                         ]))
                     ])
@@ -342,11 +420,13 @@ ACView.view = function () {
                     ]),
                     m('.card-body.d-flex', [
                         m('.flex-grow-1.overflow-auto', m('table.table.table-sm', [
-                            m('thead', m('tr', [
-                                m('th', self.opendata.datapoint2.heading)
-                            ])),
+                            m('thead', m('tr', self.opendata.datapoint2.heading.map((h) => {
+                                return m('th', h)
+                            }))),
                             m('tbody', self.opendata.datapoint2.data.map((o) => {
-                                return m('tr', m('td', o))
+                                return m('tr', o.map((i) => {
+                                    return m('td', i)
+                                }))
                             }))
                         ]))
                     ])

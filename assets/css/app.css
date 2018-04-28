@@ -129,3 +129,18 @@ body {
         transform: scale(1.0);
     }
 }
+
+#modalcontainer.modal {
+    display: block;
+    background-color: rgba(0,0,0,0.35);
+    color: #333;
+}
+
+.fade {
+    -webkit-transition: opacity 0.15s, visibility 0.15s linear;
+    transition: opacity 0.15s, visibility 0.15s linear;
+}
+
+.fade:not(.show) {
+    visibility: hidden;
+}

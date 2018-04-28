@@ -60,28 +60,85 @@ function convertPermissions (permStr) {
 }
 
 const PERMISSIONS = {
-    Wd: {name: 'WriteData', desc: ''},
-    Cf: {name: 'CreateFiles', desc: ''},
-    Cd: {name: 'CreateDirectories', desc: ''},
-    Ad: {name: 'AppendData', desc: ''},
-    We: {name: 'WriteExtendedAttributes', desc: ''},
-    Wa: {name: 'WriteAttributes', desc: ''},
-    Rd: {name: 'ReadData', desc: ''},
-    Ld: {name: 'ListDirectory', desc: ''},
-    Re: {name: 'ReadExtendedAttributes', desc: ''},
-    Ra: {name: 'ReadAttributes', desc: ''},
-    Rp: {name: 'ReadPermissions', desc: ''},
-    Xe: {name: 'ExecuteFile', desc: ''},
-    Tr: {name: 'Traverse', desc: ''},
-    De: {name: 'Delete', desc: ''},
-    Dr: {name: 'DeleteSubdirectoriesAndFiles', desc: ''},
-    Cp: {name: 'ChangePermissions', desc: ''},
-    To: {name: 'TakeOwnership', desc: ''},
-    W: {name: 'Write', desc: ''},
-    R: {name: 'Read', desc: ''},
-    RX: {name: 'ReadAndExecute', desc: ''},
-    M: {name: 'Modify', desc: ''},
-    Full: {name: 'FullControl', desc: ''}
+    Wd: {name: 'WriteData', desc: 'Specifies the right to open and write to a file or folder. This does not include the right to open and write file system attributes, extended file system attributes, or access and audit rules.', color: 'warning'},
+    Cf: {name: 'CreateFiles', desc: 'Specifies the right to create a file.', color: 'warning'},
+    Cd: {name: 'CreateDirectories', desc: 'Specifies the right to create a folder.', color: 'warning'},
+    Ad: {name: 'AppendData', desc: 'Specifies the right to append data to the end of a file.', color: 'warning'},
+    We: {name: 'WriteExtendedAttributes', desc: 'Specifies the right to open and write extended file system attributes to a folder or file. This does not include the ability to write data, attributes, or access and audit rules.', color: 'info'},
+    Wa: {name: 'WriteAttributes', desc: 'Specifies the right to open and write file system attributes to a folder or file. This does not include the ability to write data, extended attributes, or access and audit rules.', color: 'info'},
+    Rd: {name: 'ReadData', desc: 'Specifies the right to open and copy a file or folder. This does not include the right to read file system attributes, extended file system attributes, or access and audit rules.', color: 'success'},
+    Ld: {name: 'ListDirectory', desc: 'Specifies the right to read the contents of a directory.', color: 'success'},
+    Re: {name: 'ReadExtendedAttributes', desc: 'Specifies the right to open and copy extended file system attributes from a folder or file. For example, this value specifies the right to view author and content information. This does not include the right to read data, file system attributes, or access and audit rules.', color: 'secondary'},
+    Ra: {name: 'ReadAttributes', desc: 'Specifies the right to open and copy file system attributes from a folder or file. For example, this value specifies the right to view the file creation or modified date. This does not include the right to read data, extended file system attributes, or access and audit rules.', color: 'secondary'},
+    Rp: {name: 'ReadPermissions', desc: 'Specifies the right to open and copy access and audit rules from a folder or file. This does not include the right to read data, file system attributes, and extended file system attributes.', color: 'secondary'},
+    Xe: {name: 'ExecuteFile', desc: 'Specifies the right to run an application file.', color: 'warning'},
+    Tr: {name: 'Traverse', desc: 'Specifies the right to list the contents of a folder and to run applications contained within that folder.', color: 'warning'},
+    De: {name: 'Delete', desc: 'Specifies the right to delete a folder or file.', color: 'danger'},
+    Dr: {name: 'DeleteSubdirectoriesAndFiles', desc: 'Specifies the right to delete a folder and any files contained within that folder.', color: 'danger'},
+    Cp: {name: 'ChangePermissions', desc: 'Specifies the right to change the security and audit rules associated with a file or folder.', color: 'info'},
+    To: {name: 'TakeOwnership', desc: 'Specifies the right to change the owner of a folder or file. Note that owners of a resource have full access to that resource.', color: 'info'},
+    W: {name: 'Write', desc: 'Specifies the right to create folders and files, and to add or remove data from files. This right includes the WriteData right, AppendData right, WriteExtendedAttributes right, and WriteAttributes right.', color: 'warning'},
+    R: {name: 'Read', desc: 'Specifies the right to open and copy folders or files as read-only. This right includes the ReadData right, ReadExtendedAttributes right, ReadAttributes right, and ReadPermissions right.', color: 'success'},
+    RX: {name: 'ReadAndExecute', desc: 'Specifies the right to open and copy folders or files as read-only, and to run application files. This right includes the Read right and the ExecuteFile right.', color: 'warning'},
+    M: {name: 'Modify', desc: 'Specifies the right to read, write, list folder contents, delete folders and files, and run application files. This right includes the ReadAndExecute right, the Write right, and the Delete right.', color: 'warning'},
+    Full: {name: 'FullControl', desc: 'Specifies the right to exert full control over a folder or file, and to modify access control and audit rules. This value represents the right to do anything with a file and is the combination of all rights.', color: 'danger'}
+}
+
+function getPermissionDetails(perm) {
+    let resultSet = []
+    for (let i in PERMISSIONS) {
+        if (perm.main.indexOf(i) > -1) {
+            resultSet.push(PERMISSIONS[i])
+        }
+    }
+    for (let i in PERMISSIONS) {
+        if (perm.ext.indexOf(i) > -1) {
+            resultSet.push(PERMISSIONS[i])
+        }
+    }
+    return resultSet
+}
+
+const PermModal = {}
+
+PermModal.oninit = function () {
+    const self = this
+    self.closeDialog = function (e) {
+        e.preventDefault()
+        document.getElementById('modalcontainer').classList.remove('show')
+    }
+}
+
+PermModal.view = function (vnode) {
+    const self = this
+    return m('.modal-content', {oncreate: () => {
+        document.getElementById('modalcontainer').classList.add('show')
+    }}, [
+        m('.modal-header', [
+            m('h5.modal-title', vnode.attrs.title),
+            m('button.close', {onclick: self.closeDialog}, m('span', m.trust('&times;')))
+        ]),
+        m('.modal-body', [
+            getPermissionDetails(vnode.attrs.perm).map((o) => {
+                return m('.card.text-white.mb-3.bg-' + o.color, {key: o.name}, [
+                    m('.card-header', o.name),
+                    m('.card-body', [
+                        m('p.card-text', o.desc)
+                    ])
+                ])
+            })
+        ]),
+        m('.modal-footer', [
+            m('button.btn.btn-primary', {onclick: self.closeDialog}, 'Close')
+        ])
+    ])
+}
+
+function openPermissions (title, perm) {
+    return function (e) {
+        e.preventDefault()
+        m.mount(document.getElementById('modaldialog'), {view: function () {return m(PermModal, {title: title, perm: perm})}})
+    }
 }
 
 const ACView = {}
@@ -256,14 +313,14 @@ ACView.oninit = function () {
                 self.opendata.datapoint2 = {title: 'Has Access To', heading: ['Share Name', 'Permissions'], data: []}
                 if (self.openitem in self.data.groups) {
                     for (let i = 0; i < self.data.groups[self.openitem].length; i++) {
-                        self.opendata.datapoint2.data.push([self.data.groups[self.openitem][i].share, self.data.groups[self.openitem][i].perm.main || self.data.groups[self.openitem][i].perm.ext])
+                        self.opendata.datapoint2.data.push([self.data.groups[self.openitem][i].share, self.data.groups[self.openitem][i].perm])
                     }
                 }
                 for (let i = 0; i < self.data.users[self.openitem].groups.length; i++) {
                     let curgrp = self.data.users[self.openitem].groups[i]
                     if (curgrp in self.data.groups) {
                         for (let j = 0; j < self.data.groups[curgrp].length; j++) {
-                            self.opendata.datapoint2.data.push([self.data.groups[curgrp][j].share, self.data.groups[curgrp][j].perm.main || self.data.groups[curgrp][j].perm.ext])
+                            self.opendata.datapoint2.data.push([self.data.groups[curgrp][j].share, self.data.groups[curgrp][j].perm])
                         }
                     }
                     self.opendata.datapoint1.data.push([curgrp])
@@ -274,7 +331,7 @@ ACView.oninit = function () {
                 self.opendata.datapoint2 = {title: 'Has Access To', heading: ['Share Name', 'Permissions'], data: []}
                 if (self.openitem in self.data.groups) {
                     for (let i = 0; i < self.data.groups[self.openitem].length; i++) {
-                        self.opendata.datapoint2.data.push([self.data.groups[self.openitem][i].share, self.data.groups[self.openitem][i].perm.main || self.data.groups[self.openitem][i].perm.ext])
+                        self.opendata.datapoint2.data.push([self.data.groups[self.openitem][i].share, self.data.groups[self.openitem][i].perm])
                     }
                 }
                 for (let user in self.data.users) {
@@ -288,7 +345,7 @@ ACView.oninit = function () {
                 self.opendata.datapoint2 = {title: 'Groups Who Can Access', heading: ['Group Name', 'Permissions'], data: []}
                 if (self.openitem in self.data.shares) {
                     for (let i = 0; i < self.data.shares[self.openitem].length; i++) {
-                        self.opendata.datapoint2.data.push([self.data.shares[self.openitem][i].group, self.data.shares[self.openitem][i].perm.main || self.data.shares[self.openitem][i].perm.ext])
+                        self.opendata.datapoint2.data.push([self.data.shares[self.openitem][i].group, self.data.shares[self.openitem][i].perm])
                     }
                 }
                 for (let i = 0; i < self.opendata.datapoint2.data.length; i++) {
@@ -407,7 +464,11 @@ ACView.view = function () {
                             }))),
                             m('tbody', self.opendata.datapoint1.data.map((o) => {
                                 return m('tr', o.map((i) => {
-                                    return m('td', i)
+                                    if (typeof i === 'object' && 'main' in i) {
+                                        return m('td', m('a[href=""]', {onclick: openPermissions(o[0], i)}, i.main || i.ext))
+                                    } else {
+                                        return m('td', i)
+                                    }
                                 }))
                             }))
                         ]))
@@ -425,7 +486,11 @@ ACView.view = function () {
                             }))),
                             m('tbody', self.opendata.datapoint2.data.map((o) => {
                                 return m('tr', o.map((i) => {
-                                    return m('td', i)
+                                    if (typeof i === 'object' && 'main' in i) {
+                                        return m('td', m('a[href=""]', {onclick: openPermissions(o[0], i)}, i.main || i.ext))
+                                    } else {
+                                        return m('td', i)
+                                    }
                                 }))
                             }))
                         ]))
